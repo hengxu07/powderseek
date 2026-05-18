@@ -11,6 +11,8 @@ export function TripInput({ onSet }: Props) {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [airport, setAirport] = useState('SNA');
+  const [skillLevel, setSkillLevel] = useState('intermediate');
+  const [budgetLevel, setBudgetLevel] = useState('mid');
   const [active, setActive] = useState(false);
 
   const today = new Date().toISOString().split('T')[0];
@@ -29,7 +31,13 @@ export function TripInput({ onSet }: Props) {
 
   function apply() {
     if (!startDate || !endDate) return;
-    onSet({ start_date: startDate, end_date: endDate, origin_airport: airport || 'SNA' });
+    onSet({
+      start_date: startDate,
+      end_date: endDate,
+      origin_airport: airport || 'SNA',
+      skill_level: skillLevel,
+      budget_level: budgetLevel,
+    });
     setActive(true);
     setOpen(false);
   }
@@ -38,6 +46,8 @@ export function TripInput({ onSet }: Props) {
     setStartDate('');
     setEndDate('');
     setAirport('SNA');
+    setSkillLevel('intermediate');
+    setBudgetLevel('mid');
     setActive(false);
     onSet(undefined);
   }
@@ -91,7 +101,7 @@ export function TripInput({ onSet }: Props) {
               />
             </label>
             <label className={styles.field}>
-              <span>Flying from</span>
+              <span>Airport</span>
               <input
                 type="text"
                 maxLength={3}
@@ -99,6 +109,26 @@ export function TripInput({ onSet }: Props) {
                 value={airport}
                 onChange={(e) => setAirport(e.target.value.toUpperCase())}
               />
+            </label>
+          </div>
+          <div className={styles.fieldsRow2}>
+            <label className={styles.field}>
+              <span>Skill level</span>
+              <select value={skillLevel} onChange={(e) => setSkillLevel(e.target.value)}>
+                <option value="beginner">Beginner</option>
+                <option value="intermediate">Intermediate</option>
+                <option value="advanced">Advanced</option>
+                <option value="expert">Expert</option>
+              </select>
+            </label>
+            <label className={styles.field}>
+              <span>Budget</span>
+              <select value={budgetLevel} onChange={(e) => setBudgetLevel(e.target.value)}>
+                <option value="budget">Budget</option>
+                <option value="mid">Mid-range</option>
+                <option value="premium">Premium</option>
+                <option value="luxury">Luxury</option>
+              </select>
             </label>
           </div>
 

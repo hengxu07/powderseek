@@ -87,9 +87,9 @@ async def chat(req: ChatRequest):
             origin_airport=req.trip.origin_airport or (profile or {}).get("home_airport", "SNA"),
             home_lat=home_lat,
             home_lon=home_lon,
-            skill_level=(profile or {}).get("skill_level", "intermediate"),
+            skill_level=req.trip.skill_level or (profile or {}).get("skill_level", "intermediate"),
             preferred_terrain=list((profile or {}).get("preferred_terrain") or []),
-            budget_level=(profile or {}).get("budget_level", "mid"),
+            budget_level=req.trip.budget_level or (profile or {}).get("budget_level", "mid"),
             passport_countries=list((profile or {}).get("passport_countries") or ["US"]),
             visited_resort_slugs=[],
         )

@@ -10,6 +10,8 @@ class TripInput(BaseModel):
     start_date: date
     end_date: date
     origin_airport: str = "SNA"
+    skill_level: Optional[str] = None   # beginner | intermediate | advanced | expert
+    budget_level: Optional[str] = None  # budget | mid | premium | luxury
 
     @field_validator("end_date")
     @classmethod
