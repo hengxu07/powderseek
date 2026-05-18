@@ -12,10 +12,10 @@ export function Message({ message, resortNames, onResortClick }: Props) {
   const isUser = message.role === 'user';
 
   const strongRenderer = ({ children }: { children?: React.ReactNode }) => {
-    const text = typeof children === 'string' ? children
+    const raw = typeof children === 'string' ? children
       : Array.isArray(children) ? children.map(c => (typeof c === 'string' ? c : '')).join('')
       : '';
-    const slug = resortNames?.get(text.toLowerCase());
+    const slug = matchResort(raw.toLowerCase(), resortNames);
     if (slug && onResortClick) {
       return (
         <button className={styles.resortLink} onClick={() => onResortClick(slug)}>
@@ -50,6 +50,24 @@ export function Message({ message, resortNames, onResortClick }: Props) {
 }
 
 export type { ResortSummary };
+
+// Handles bold spans like "Telluride, Colorado. This is your trip." by
+// progressively stripping to find the shortest matching prefix.
+function matchResort(text: string, map?: Map<string, string>): string | undefined {
+  if (!map) return undefined;
+  // 1. Exact match
+  if (map.has(text)) return map.get(text);
+  // 2. First token before comma / period / colon / exclamation
+  const firstToken = text.split(/[,.!?:]/)[0]?.trim() ?? '';
+  if (firstToken && map.has(firstToken)) return map.get(firstToken);
+  // 3. Longest prefix word sequence within firstToken
+  const words = firstToken.split(/\s+/).filter(Boolean);
+  for (let len = words.length; len >= 1; len--) {
+    const candidate = words.slice(0, len).join(' ');
+    if (candidate.length >= 4 && map.has(candidate)) return map.get(candidate);
+  }
+  return undefined;
+}
 
 function SnowflakeIcon() {
   return (
