@@ -11,8 +11,11 @@ AI-powered ski and snowboard trip planner. Tell it how many days you have and it
 3. It fetches live snow forecasts for reachable resorts and scores them on snow quality, travel efficiency, terrain match, and budget fit
 4. A Claude-powered agent streams a confident recommendation with honest trade-offs
 5. Follow-up questions ("what's the food like?" / "compare those two") are answered in context — the agent remembers which resorts it ranked
+6. Click any bold resort name in the chat to open a detail panel with a 7-day snow chart, terrain breakdown, and mountain stats
 
 Resorts unlock by trip length: local SoCal spots for day trips, Utah/Colorado for 4–5 days, Whistler/Banff for a week, and Japan/Europe/New Zealand/Chile for 7+ days.
+
+Ski-only resorts (Alta, Deer Valley) are flagged in the agent context and shown with a warning banner in the detail panel.
 
 ## Stack
 
@@ -81,8 +84,9 @@ powderseek/
 ├── frontend/
 │   └── src/
 │       ├── components/
-│       │   ├── ChatWindow.tsx  — Message list, suggestions
-│       │   ├── Message.tsx     — Markdown rendering, streaming cursor
+│       │   ├── ChatWindow.tsx  — Message list, resort name→slug map, drawer state
+│       │   ├── Message.tsx     — Markdown rendering, clickable resort name detection
+│       │   ├── ResortDrawer.tsx — Slide-in detail panel, 7-day bar chart, terrain breakdown
 │       │   ├── ChatInput.tsx   — Unified input box
 │       │   └── TripInput.tsx   — Trip form (dates, airport, skill, budget)
 │       └── hooks/
