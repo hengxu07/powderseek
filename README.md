@@ -15,7 +15,9 @@ AI-powered ski and snowboard trip planner. Tell it how many days you have and it
 
 Resorts unlock by trip length: local SoCal spots for day trips, Utah/Colorado for 4–5 days, Whistler/Banff for a week, and Japan/Europe/New Zealand/Chile for 7+ days.
 
-Ski-only resorts (Alta, Deer Valley) are flagged in the agent context and shown with a warning banner in the detail panel.
+Ski-only resorts (Alta, Deer Valley) are flagged in the agent context and shown with an orange warning banner in the detail panel.
+
+Out-of-season resorts are scored down and the agent is instructed not to recommend them. The detail panel shows a blue "Closed" banner when a resort is outside its operating window.
 
 ## Stack
 
@@ -110,7 +112,7 @@ powderseek/
 
 ## Scoring model
 
-Each resort is scored on four weighted components:
+Each resort is scored on four weighted components, with modifiers applied after:
 
 | Component | Weight | Signal |
 |---|---|---|
@@ -118,3 +120,19 @@ Each resort is scored on four weighted components:
 | Travel efficiency | 25% | Penalises resorts where travel eats too much of the trip |
 | Terrain match | 15% | Overlap between user's preferred terrain and resort tags |
 | Budget fit | 10% | Distance between user budget tier and resort cost tier |
+
+Modifiers (applied after weighting):
+- **Novelty bonus** +0.05 — slight boost for resorts the user hasn't visited
+- **Out-of-season penalty** −0.60 — effectively removes closed resorts from top results
+
+## iOS app
+
+A native SwiftUI companion app (`powderseek-ios`) mirrors the web experience:
+
+- Chat interface with SSE streaming — responses stream token-by-token using `URLSession.bytes`
+- Trip form sheet — set dates, origin airport, skill level, and budget before asking
+- Resort chips — tappable pills below assistant messages open a detail sheet
+- Resort detail sheet — 7-day snow bar chart, terrain breakdown, ski-only and closed-season banners
+- Session persistence via `UserDefaults`
+
+The app connects to the same Railway-hosted backend as the web app.
