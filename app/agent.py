@@ -3,8 +3,21 @@ from __future__ import annotations
 import json
 import logging
 import os
-from datetime import date
+from datetime import date, datetime
+from decimal import Decimal
 from typing import AsyncGenerator, Optional
+
+
+def _json_default(obj):
+    if isinstance(obj, Decimal):
+        return float(obj)
+    if isinstance(obj, (date, datetime)):
+        return obj.isoformat()
+    raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
+
+
+def dumps(obj) -> str:
+    return json.dumps(obj, default=_json_default)
 
 import anthropic
 
@@ -104,14 +117,14 @@ async def execute_tool(name: str, inputs: dict, session_id: str) -> str:
         row = await db.get_latest_forecast(resort_id)
         if not row:
             return "No forecast data available for this resort yet."
-        return json.dumps({
+        return dumps({
             "resort_id": resort_id,
-            "forecast_date": str(row["forecast_date"]),
+            "forecast_date": row["forecast_date"],
             "new_snow_cm": row["new_snow_cm"],
             "cumulative_7d_cm": row["cumulative_7d_cm"],
             "base_depth_cm": row["base_depth_cm"],
-            "temperature_c": float(row["temperature_c"]) if row["temperature_c"] else None,
-            "wind_kph": float(row["wind_kph"]) if row["wind_kph"] else None,
+            "temperature_c": row["temperature_c"],
+            "wind_kph": row["wind_kph"],
         })
 
     elif name == "get_resort_details":
@@ -119,7 +132,7 @@ async def execute_tool(name: str, inputs: dict, session_id: str) -> str:
         row = await db.get_resort_by_slug(slug)
         if not row:
             return f"Resort '{slug}' not found."
-        return json.dumps({
+        return dumps({
             "name": row["name"],
             "country": row["country"],
             "region": row["region"],
@@ -153,7 +166,7 @@ async def execute_tool(name: str, inputs: dict, session_id: str) -> str:
                 "base_depth_cm": forecast["base_depth_cm"] if forecast else None,
                 "notes": resort["agent_notes"],
             })
-        return json.dumps(results)
+        return dumps(results)
 
     elif name == "save_preference":
         key = inputs["key"]
