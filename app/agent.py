@@ -111,6 +111,29 @@ TOOLS: list[dict] = [
 # Tool execution
 # ---------------------------------------------------------------------------
 
+_SKILL_MAP = {
+    "beginner": "beginner", "novice": "beginner", "new": "beginner", "learning": "beginner",
+    "intermediate": "intermediate", "mid": "intermediate", "medium": "intermediate",
+    "advanced": "advanced", "experienced": "advanced", "strong": "advanced", "expert": "expert",
+    "pro": "expert", "professional": "expert", "elite": "expert",
+}
+
+_BUDGET_MAP = {
+    "budget": "budget", "cheap": "budget", "low": "budget", "affordable": "budget",
+    "mid": "mid", "moderate": "mid", "middle": "mid", "medium": "mid",
+    "premium": "premium", "high": "premium", "upper": "premium",
+    "luxury": "luxury", "ultra": "luxury", "high-end": "luxury",
+}
+
+
+def _normalize_skill_level(value: str) -> str:
+    return _SKILL_MAP.get(str(value).lower().strip(), "intermediate")
+
+
+def _normalize_budget_level(value: str) -> str:
+    return _BUDGET_MAP.get(str(value).lower().strip(), "mid")
+
+
 async def execute_tool(name: str, inputs: dict, session_id: str) -> str:
     if name == "get_forecast":
         resort_id = inputs["resort_id"]
@@ -171,6 +194,12 @@ async def execute_tool(name: str, inputs: dict, session_id: str) -> str:
     elif name == "save_preference":
         key = inputs["key"]
         value = inputs["value"]
+
+        if key == "skill_level":
+            value = _normalize_skill_level(value)
+        elif key == "budget_level":
+            value = _normalize_budget_level(value)
+
         await db.upsert_user_profile(session_id, {key: value})
         return f"Saved: {key} = {value}"
 
