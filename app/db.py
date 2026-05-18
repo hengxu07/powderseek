@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 from typing import Optional
 
@@ -125,7 +126,7 @@ async def get_resorts_with_forecasts() -> list[ResortCandidate]:
             season_start_month=row["season_start_month"],
             season_end_month=row["season_end_month"],
             avg_annual_snowfall_cm=row["avg_annual_snowfall_cm"],
-            difficulty_mix=dict(row["difficulty_mix"]) if row["difficulty_mix"] else {},
+            difficulty_mix=json.loads(row["difficulty_mix"]) if row["difficulty_mix"] else {},
             terrain_tags=list(row["terrain_tags"]),
             vibe_tags=list(row["vibe_tags"]),
             budget_tier=row["budget_tier"] or "mid",

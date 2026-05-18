@@ -6,6 +6,9 @@ import os
 from contextlib import asynccontextmanager
 from datetime import date
 
+from dotenv import load_dotenv
+load_dotenv()
+
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -32,9 +35,10 @@ scheduler = AsyncIOScheduler()
 async def lifespan(app: FastAPI):
     await db.init_pool()
 
-    # Kick off an immediate forecast refresh on startup, then every 6 hours
-    await forecast.refresh_all_forecasts()
+    # Schedule forecast refresh every 6 hours; run first one in background
+    # so the server starts accepting requests immediately
     scheduler.add_job(forecast.refresh_all_forecasts, "interval", hours=6)
+    scheduler.add_job(forecast.refresh_all_forecasts, "date")  # run once at startup
     scheduler.start()
 
     yield

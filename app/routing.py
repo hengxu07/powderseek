@@ -221,12 +221,9 @@ def filter_reachable(
         if cfg.countries and r.country not in cfg.countries:
             continue
 
-        # Passport check for international resorts
-        if r.country != ctx.passport_countries[0] if ctx.passport_countries else "US":
-            if r.country not in ctx.passport_countries and r.country != "US":
-                # User needs a passport for this country
-                if r.country not in ctx.passport_countries:
-                    continue
+        # Passport check: skip foreign resorts the user can't enter
+        if r.country != "US" and r.country not in ctx.passport_countries:
+            continue
 
         # Determine travel time
         flight_key = (ctx.origin_airport, r.nearest_airport)
