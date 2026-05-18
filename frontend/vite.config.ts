@@ -7,6 +7,7 @@ export default defineConfig({
     proxy: {
       '/chat': 'http://localhost:8000',
       '/resorts': 'http://localhost:8000',
+      '/resort': 'http://localhost:8000',
       '/forecast': 'http://localhost:8000',
       '/profile': 'http://localhost:8000',
     },

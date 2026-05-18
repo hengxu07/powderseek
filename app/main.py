@@ -17,7 +17,7 @@ from fastapi.responses import StreamingResponse
 import db
 import forecast
 from agent import run_agent
-from models import ChatRequest, ForecastResponse, ProfileUpdate, ResortResponse
+from models import ChatRequest, ForecastResponse, ProfileUpdate, ResortDetailResponse, ResortResponse
 from routing import TripContext
 
 logging.basicConfig(level=logging.INFO)
@@ -136,6 +136,15 @@ async def list_resorts():
         )
         for r in candidates
     ]
+
+
+@app.get("/resort/{slug}", response_model=ResortDetailResponse)
+async def get_resort(slug: str):
+    """Returns full resort detail with 7-day forecast array."""
+    resort = await db.get_resort_detail(slug)
+    if not resort:
+        raise HTTPException(status_code=404, detail="Resort not found")
+    return resort
 
 
 @app.get("/forecast/{resort_id}", response_model=ForecastResponse)

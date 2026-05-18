@@ -65,6 +65,40 @@ class ResortResponse(BaseModel):
     forecast_date: Optional[date] = None
 
 
+class ForecastDay(BaseModel):
+    forecast_date: date
+    new_snow_cm: Optional[float]
+    cumulative_7d_cm: Optional[float]
+    base_depth_cm: Optional[int]
+    temperature_c: Optional[float]
+    wind_kph: Optional[float]
+
+
+class ResortDetailResponse(BaseModel):
+    id: int
+    name: str
+    slug: str
+    country: str
+    continent: str
+    region: Optional[str] = None
+    lat: float
+    lon: float
+    elevation_base_m: int
+    elevation_summit_m: int
+    vertical_drop_m: int
+    nearest_airport: str
+    airport_drive_minutes: int
+    season_start_month: int
+    season_end_month: int
+    avg_annual_snowfall_cm: Optional[int] = None
+    difficulty_mix: Optional[dict] = None
+    terrain_tags: list[str]
+    vibe_tags: list[str]
+    budget_tier: Optional[str] = None
+    agent_notes: Optional[str] = None
+    forecast_days: list[ForecastDay]
+
+
 class ForecastResponse(BaseModel):
     resort_id: int
     resort_name: str

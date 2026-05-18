@@ -3,6 +3,11 @@
   flex-direction: column;
   height: 100%;
   position: relative;
+  transition: padding-right 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.rootDrawerOpen {
+  padding-right: 380px;
 }
 
 .list {

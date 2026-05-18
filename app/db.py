@@ -160,6 +160,40 @@ async def get_resorts_with_forecasts() -> list[ResortCandidate]:
     ]
 
 
+async def get_resort_detail(slug: str) -> Optional[dict]:
+    row = await get_pool().fetchrow("SELECT * FROM resorts WHERE slug = $1", slug)
+    if not row:
+        return None
+    resort = dict(row)
+    if resort.get("difficulty_mix"):
+        dm = resort["difficulty_mix"]
+        resort["difficulty_mix"] = json.loads(dm) if isinstance(dm, str) else dm
+
+    forecasts = await get_pool().fetch(
+        """
+        SELECT forecast_date, new_snow_cm, cumulative_7d_cm, base_depth_cm,
+               temperature_c, wind_kph
+        FROM snow_forecasts
+        WHERE resort_id = $1 AND forecast_date >= CURRENT_DATE
+        ORDER BY forecast_date ASC
+        LIMIT 7
+        """,
+        resort["id"],
+    )
+    resort["forecast_days"] = [
+        {
+            "forecast_date": f["forecast_date"],
+            "new_snow_cm": float(f["new_snow_cm"]) if f["new_snow_cm"] is not None else None,
+            "cumulative_7d_cm": float(f["cumulative_7d_cm"]) if f["cumulative_7d_cm"] is not None else None,
+            "base_depth_cm": int(f["base_depth_cm"]) if f["base_depth_cm"] is not None else None,
+            "temperature_c": float(f["temperature_c"]) if f["temperature_c"] is not None else None,
+            "wind_kph": float(f["wind_kph"]) if f["wind_kph"] is not None else None,
+        }
+        for f in forecasts
+    ]
+    return resort
+
+
 async def get_resort_by_slug(slug: str) -> Optional[dict]:
     row = await get_pool().fetchrow(
         "SELECT * FROM resorts WHERE slug = $1",

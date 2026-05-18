@@ -1,13 +1,30 @@
 import ReactMarkdown from 'react-markdown';
-import { ChatMessage } from '../types';
+import { ChatMessage, ResortSummary } from '../types';
 import styles from './Message.module.css';
 
 interface Props {
   message: ChatMessage;
+  resortNames?: Map<string, string>; // lowercased name → slug
+  onResortClick?: (slug: string) => void;
 }
 
-export function Message({ message }: Props) {
+export function Message({ message, resortNames, onResortClick }: Props) {
   const isUser = message.role === 'user';
+
+  const strongRenderer = ({ children }: { children?: React.ReactNode }) => {
+    const text = typeof children === 'string' ? children
+      : Array.isArray(children) ? children.map(c => (typeof c === 'string' ? c : '')).join('')
+      : '';
+    const slug = resortNames?.get(text.toLowerCase());
+    if (slug && onResortClick) {
+      return (
+        <button className={styles.resortLink} onClick={() => onResortClick(slug)}>
+          {children}
+        </button>
+      );
+    }
+    return <strong>{children}</strong>;
+  };
 
   return (
     <div className={`${styles.row} ${isUser ? styles.userRow : styles.assistantRow}`}>
@@ -21,7 +38,9 @@ export function Message({ message }: Props) {
           <p className={styles.userText}>{message.content}</p>
         ) : (
           <div className={styles.markdown}>
-            <ReactMarkdown>{message.content || ' '}</ReactMarkdown>
+            <ReactMarkdown components={{ strong: strongRenderer }}>
+              {message.content || ' '}
+            </ReactMarkdown>
             {message.streaming && <span className={styles.cursor} />}
           </div>
         )}
@@ -29,6 +48,8 @@ export function Message({ message }: Props) {
     </div>
   );
 }
+
+export type { ResortSummary };
 
 function SnowflakeIcon() {
   return (
