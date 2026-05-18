@@ -89,6 +89,20 @@
   background: var(--color-surface-2);
 }
 
+/* Ski-only banner */
+.skiOnlyBanner {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 0.875rem;
+  background: #3d1f00;
+  border: 1px solid #ff8c00;
+  border-radius: 0.75rem;
+  color: #ffb347;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
 /* Sections */
 .section {
   display: flex;

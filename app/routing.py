@@ -182,6 +182,7 @@ class ResortCandidate:
     vibe_tags: list[str]
     budget_tier: str
     agent_notes: str
+    snowboard_allowed: bool = True
 
     # forecast fields (joined from snow_forecasts)
     new_snow_cm: Optional[float] = None
@@ -367,6 +368,7 @@ def build_agent_prompt(
             f"   Travel: {travel_desc}\n"
             f"   Snow:   {snow_desc}\n"
             f"   Tags:   terrain={r.terrain_tags}, vibe={r.vibe_tags}, budget={r.budget_tier}\n"
+            f"   Snowboard: {'allowed' if r.snowboard_allowed else 'NOT ALLOWED — ski only'}\n"
             f"   Notes:  {r.agent_notes}"
         )
 

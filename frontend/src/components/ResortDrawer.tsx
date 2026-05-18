@@ -90,6 +90,13 @@ export function ResortDrawer({ slug, onClose }: Props) {
               <button className={styles.close} onClick={onClose} aria-label="Close">✕</button>
             </div>
 
+            {/* Ski-only warning */}
+            {!resort.snowboard_allowed && (
+              <div className={styles.skiOnlyBanner}>
+                ⛷ Ski only — snowboarding not permitted
+              </div>
+            )}
+
             {/* Snow snapshot */}
             <section className={styles.section}>
               <h3 className={styles.sectionLabel}>Snow Conditions</h3>

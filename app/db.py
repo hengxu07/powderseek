@@ -122,6 +122,7 @@ async def get_resorts_with_forecasts() -> list[ResortCandidate]:
             r.season_start_month, r.season_end_month,
             r.avg_annual_snowfall_cm, r.difficulty_mix,
             r.terrain_tags, r.vibe_tags, r.budget_tier, r.agent_notes,
+            r.snowboard_allowed,
             f.new_snow_cm, f.cumulative_7d_cm, f.base_depth_cm
         FROM resorts r
         LEFT JOIN LATERAL (
@@ -152,6 +153,7 @@ async def get_resorts_with_forecasts() -> list[ResortCandidate]:
             vibe_tags=list(row["vibe_tags"]),
             budget_tier=row["budget_tier"] or "mid",
             agent_notes=row["agent_notes"] or "",
+            snowboard_allowed=bool(row["snowboard_allowed"]),
             new_snow_cm=float(row["new_snow_cm"]) if row["new_snow_cm"] is not None else None,
             cumulative_7d_cm=float(row["cumulative_7d_cm"]) if row["cumulative_7d_cm"] is not None else None,
             base_depth_cm=int(row["base_depth_cm"]) if row["base_depth_cm"] is not None else None,

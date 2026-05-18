@@ -95,6 +95,7 @@ class ResortDetailResponse(BaseModel):
     terrain_tags: list[str]
     vibe_tags: list[str]
     budget_tier: Optional[str] = None
+    snowboard_allowed: bool = True
     agent_notes: Optional[str] = None
     forecast_days: list[ForecastDay]
 

@@ -224,6 +224,7 @@ Guidelines:
 - Use the save_preference tool proactively when the user mentions skill level, budget, or preferences.
 - Keep responses conversational. No bullet-point walls.
 - ALWAYS refer to resorts by their full name (e.g. "Niseko United", "Mammoth Mountain"). Never say "Resort #3" or use numeric IDs in your response.
+- If a resort's context shows "Snowboard: NOT ALLOWED", always flag this clearly before recommending it — especially if the user is a snowboarder.
 """
 
 

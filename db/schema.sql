@@ -42,6 +42,7 @@ CREATE TABLE resorts (
     vibe_tags               TEXT[] NOT NULL DEFAULT '{}', -- luxury, party, family, cultural, remote, village, resort-town, adventure
     budget_tier             TEXT CHECK (budget_tier IN ('budget', 'mid', 'premium', 'luxury')),
     pass_affiliations       TEXT[] DEFAULT '{}',         -- ikon, epic, indy, other
+    snowboard_allowed       BOOLEAN NOT NULL DEFAULT true,
 
     -- agent context: free-form notes surfaced to the LLM when this resort is in consideration
     agent_notes             TEXT,

@@ -27,13 +27,20 @@ export function ChatWindow() {
       const map = new Map<string, string>();
       for (const r of list) {
         const lower = r.name.toLowerCase();
+        // Full name
         map.set(lower, r.slug);
         // Normalize spaces around slashes: "val d'isère / tignes" → "val d'isère/tignes"
         const compact = lower.replace(/\s*\/\s*/g, '/');
-        map.set(compact, r.slug);
-        // Add first component as alias: "val d'isère" → val-disere
-        const first = lower.split(/\s*\/\s*/)[0].trim();
-        if (first && first !== lower) map.set(first, r.slug);
+        if (compact !== lower) map.set(compact, r.slug);
+        // First component before " / " as alias: "val d'isère" → val-disere
+        const firstPart = lower.split(/\s*\/\s*/)[0].trim();
+        if (firstPart && firstPart !== lower) map.set(firstPart, r.slug);
+        // Slug as human-readable alias: "niseko-united" → "niseko united" → niseko-united
+        const slugWords = r.slug.replace(/-/g, ' ');
+        if (!map.has(slugWords)) map.set(slugWords, r.slug);
+        // First word of the name if ≥5 chars (catches "Niseko", "Hakuba", "Mammoth", etc.)
+        const firstWord = lower.split(/[\s/]/)[0].replace(/[^a-z']/g, '');
+        if (firstWord.length >= 5 && !map.has(firstWord)) map.set(firstWord, r.slug);
       }
       setResortNames(map);
     }).catch(() => {});
