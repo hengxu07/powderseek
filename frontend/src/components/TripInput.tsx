@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { TripInput as TripInputType } from '../types';
 import styles from './TripInput.module.css';
 
@@ -8,6 +8,18 @@ interface Props {
 
 export function TripInput({ onSet }: Props) {
   const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function handleClick(e: MouseEvent) {
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [open]);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [airport, setAirport] = useState('SNA');
@@ -53,7 +65,7 @@ export function TripInput({ onSet }: Props) {
   }
 
   return (
-    <div className={styles.root}>
+    <div className={styles.root} ref={rootRef}>
       <button
         className={`${styles.toggle} ${active ? styles.toggleActive : ''}`}
         onClick={() => setOpen((o) => !o)}
