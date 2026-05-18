@@ -39,29 +39,31 @@ export function ChatInput({ onSend, disabled }: Props) {
 
   return (
     <div className={styles.root}>
-      <div className={styles.toolbar}>
-        <TripInput onSet={setTrip} />
-      </div>
-      <div className={styles.inputRow}>
-        <textarea
-          ref={textareaRef}
-          className={styles.textarea}
-          placeholder="Where should I ski this weekend?"
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          onKeyDown={onKeyDown}
-          onInput={onInput}
-          disabled={disabled}
-          rows={1}
-        />
-        <button
-          className={styles.send}
-          onClick={submit}
-          disabled={disabled || !value.trim()}
-          aria-label="Send"
-        >
-          {disabled ? <SpinnerIcon /> : <SendIcon />}
-        </button>
+      <div className={styles.inputBox}>
+        <div className={styles.toolbar}>
+          <TripInput onSet={setTrip} />
+        </div>
+        <div className={styles.inputRow}>
+          <textarea
+            ref={textareaRef}
+            className={styles.textarea}
+            placeholder="Where should I ski this weekend?"
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            onKeyDown={onKeyDown}
+            onInput={onInput}
+            disabled={disabled}
+            rows={1}
+          />
+          <button
+            className={styles.send}
+            onClick={submit}
+            disabled={disabled || !value.trim()}
+            aria-label="Send"
+          >
+            {disabled ? <SpinnerIcon /> : <SendIcon />}
+          </button>
+        </div>
       </div>
       <p className={styles.hint}>Enter to send · Shift+Enter for newline</p>
     </div>
