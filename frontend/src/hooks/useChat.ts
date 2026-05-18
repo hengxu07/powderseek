@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 import { ChatMessage, TripInput } from '../types';
+import { apiUrl } from '../lib/api';
 
 function getSessionId(): string {
   const key = 'powderseek_session';
@@ -29,7 +30,7 @@ export function useChat() {
     abortRef.current = new AbortController();
 
     try {
-      const res = await fetch('/chat', {
+      const res = await fetch(apiUrl('/chat'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         signal: abortRef.current.signal,
