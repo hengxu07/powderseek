@@ -6,7 +6,7 @@ from typing import Optional
 
 import asyncpg
 
-from routing import ResortCandidate
+from routing import ResortCandidate, is_in_season as _routing_is_in_season
 
 # ---------------------------------------------------------------------------
 # Connection pool
@@ -193,6 +193,25 @@ async def get_resort_detail(slug: str) -> Optional[dict]:
         }
         for f in forecasts
     ]
+
+    # Compute season status using a throwaway ResortCandidate
+    _rc = ResortCandidate(
+        id=resort["id"], slug=resort["slug"], name=resort["name"],
+        continent=resort.get("continent", ""), country=resort.get("country", ""),
+        hemisphere=resort.get("hemisphere", "northern"),
+        nearest_airport=resort.get("nearest_airport", ""),
+        airport_drive_minutes=resort.get("airport_drive_minutes", 0),
+        season_start_month=resort["season_start_month"],
+        season_end_month=resort["season_end_month"],
+        avg_annual_snowfall_cm=resort.get("avg_annual_snowfall_cm"),
+        difficulty_mix=resort.get("difficulty_mix") or {},
+        terrain_tags=list(resort.get("terrain_tags") or []),
+        vibe_tags=list(resort.get("vibe_tags") or []),
+        budget_tier=resort.get("budget_tier", "mid"),
+        agent_notes=resort.get("agent_notes", ""),
+    )
+    resort["is_in_season"] = _routing_is_in_season(_rc)
+
     return resort
 
 

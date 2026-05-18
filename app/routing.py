@@ -254,6 +254,31 @@ def filter_reachable(
 
 
 # ---------------------------------------------------------------------------
+# Season check
+# ---------------------------------------------------------------------------
+
+def is_in_season(r: ResortCandidate, check_date: Optional[date] = None) -> bool:
+    """
+    Returns True if the resort is currently within its operating season.
+
+    Northern hemisphere example: Nov (11) → Apr (4) wraps across year boundary,
+    so start > end means the season spans Dec 31.
+    Southern hemisphere (NZ, Chile): Jun (6) → Sep (9), start < end, same logic.
+    """
+    d = check_date or date.today()
+    m = d.month
+    s = r.season_start_month
+    e = r.season_end_month
+
+    if s <= e:
+        # Season within one calendar year (e.g. Jun–Sep for southern hemisphere)
+        return s <= m <= e
+    else:
+        # Season wraps across year boundary (e.g. Nov–Apr for northern hemisphere)
+        return m >= s or m <= e
+
+
+# ---------------------------------------------------------------------------
 # Scoring
 # ---------------------------------------------------------------------------
 
@@ -294,6 +319,9 @@ def score_resort(r: ResortCandidate, ctx: TripContext) -> float:
     # 5. Novelty bonus — slight boost for resorts not yet visited
     novelty = 0.0 if r.slug in ctx.visited_resort_slugs else 0.05
 
+    # Out-of-season penalty — resort is closed or nearly closed
+    season_penalty = 0.0 if is_in_season(r) else 0.6
+
     # Weighted final score
     score = (
         snow_score   * 0.45 +
@@ -301,9 +329,9 @@ def score_resort(r: ResortCandidate, ctx: TripContext) -> float:
         terrain_score * 0.15 +
         budget_score  * 0.10 +
         novelty
-    )
+    ) - season_penalty
 
-    return round(score, 4)
+    return round(max(score, 0.0), 4)
 
 
 # ---------------------------------------------------------------------------
@@ -363,10 +391,16 @@ def build_agent_prompt(
             if r.new_snow_cm is not None
             else "no forecast data available"
         )
+        season_label = (
+            f"IN SEASON (month {r.season_start_month}–{r.season_end_month})"
+            if is_in_season(r)
+            else f"CLOSED — out of season (season: month {r.season_start_month}–{r.season_end_month})"
+        )
         lines.append(
             f"{i}. {r.name} ({r.country}) — score {score} [id={r.id}, slug={r.slug}]\n"
             f"   Travel: {travel_desc}\n"
             f"   Snow:   {snow_desc}\n"
+            f"   Season: {season_label}\n"
             f"   Tags:   terrain={r.terrain_tags}, vibe={r.vibe_tags}, budget={r.budget_tier}\n"
             f"   Snowboard: {'allowed' if r.snowboard_allowed else 'NOT ALLOWED — ski only'}\n"
             f"   Notes:  {r.agent_notes}"

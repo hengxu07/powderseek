@@ -225,6 +225,7 @@ Guidelines:
 - Keep responses conversational. No bullet-point walls.
 - ALWAYS refer to resorts by their full name (e.g. "Niseko United", "Mammoth Mountain"). Never say "Resort #3" or use numeric IDs in your response.
 - If a resort's context shows "Snowboard: NOT ALLOWED", always flag this clearly before recommending it — especially if the user is a snowboarder.
+- If a resort's context shows "CLOSED — out of season", do NOT recommend it as a primary pick. Acknowledge the closure briefly and steer toward in-season alternatives. Only mention it if the user explicitly asks about that resort.
 """
 
 

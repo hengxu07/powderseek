@@ -103,6 +103,20 @@
   font-weight: 600;
 }
 
+.closedBanner {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 0.875rem;
+  background: #001a33;
+  border: 1px solid #3399ff;
+  border-radius: 0.75rem;
+  color: #80c8ff;
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-top: 0.5rem;
+}
+
 /* Sections */
 .section {
   display: flex;

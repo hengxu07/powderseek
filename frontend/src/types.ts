@@ -37,6 +37,7 @@ export interface ResortDetail {
   vibe_tags: string[];
   budget_tier: string | null;
   snowboard_allowed: boolean;
+  is_in_season: boolean;
   agent_notes: string | null;
   forecast_days: ForecastDay[];
 }

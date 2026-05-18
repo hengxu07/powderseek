@@ -97,6 +97,13 @@ export function ResortDrawer({ slug, onClose }: Props) {
               </div>
             )}
 
+            {/* Out-of-season warning */}
+            {!resort.is_in_season && (
+              <div className={styles.closedBanner}>
+                ❄️ Closed — currently out of season (season: {MONTHS[resort.season_start_month - 1]}–{MONTHS[resort.season_end_month - 1]})
+              </div>
+            )}
+
             {/* Snow snapshot */}
             <section className={styles.section}>
               <h3 className={styles.sectionLabel}>Snow Conditions</h3>
