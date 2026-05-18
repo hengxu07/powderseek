@@ -263,12 +263,14 @@ async def run_agent(
     messages = history + [{"role": "user", "content": user_message}]
 
     full_response = ""
+    has_yielded_text = False  # tracks whether any text was streamed before this iteration
 
     # Agentic loop: keep going until no more tool calls
     while True:
         tool_calls: list[dict] = []
         assistant_content = []
         current_tool: Optional[dict] = None
+        iteration_text_started = False
 
         async with client.messages.stream(
             model=MODEL,
@@ -288,8 +290,15 @@ async def run_agent(
                 elif event.type == "content_block_delta":
                     delta = event.delta
                     if delta.type == "text_delta":
+                        if has_yielded_text and not iteration_text_started:
+                            # Resuming text after a tool call — insert paragraph break
+                            # so the text doesn't run directly into the previous block.
+                            yield "\n\n"
+                            full_response += "\n\n"
                         yield delta.text
                         full_response += delta.text
+                        has_yielded_text = True
+                        iteration_text_started = True
                     elif delta.type == "input_json_delta" and current_tool:
                         current_tool["input_str"] += delta.partial_json
 
