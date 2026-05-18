@@ -363,7 +363,7 @@ def build_agent_prompt(
             else "no forecast data available"
         )
         lines.append(
-            f"{i}. {r.name} ({r.country}) — score {score}\n"
+            f"{i}. {r.name} ({r.country}) — score {score} [id={r.id}, slug={r.slug}]\n"
             f"   Travel: {travel_desc}\n"
             f"   Snow:   {snow_desc}\n"
             f"   Tags:   terrain={r.terrain_tags}, vibe={r.vibe_tags}, budget={r.budget_tier}\n"

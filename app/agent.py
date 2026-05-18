@@ -137,10 +137,12 @@ def _normalize_budget_level(value: str) -> str:
 async def execute_tool(name: str, inputs: dict, session_id: str) -> str:
     if name == "get_forecast":
         resort_id = inputs["resort_id"]
+        resort = await db.get_resort_by_id(resort_id)
         row = await db.get_latest_forecast(resort_id)
         if not row:
             return "No forecast data available for this resort yet."
         return dumps({
+            "resort_name": resort["name"] if resort else f"Resort {resort_id}",
             "resort_id": resort_id,
             "forecast_date": row["forecast_date"],
             "new_snow_cm": row["new_snow_cm"],
@@ -221,6 +223,7 @@ Guidelines:
 - Be honest about weak forecasts. If the snow is flat everywhere, say so and suggest timing.
 - Use the save_preference tool proactively when the user mentions skill level, budget, or preferences.
 - Keep responses conversational. No bullet-point walls.
+- ALWAYS refer to resorts by their full name (e.g. "Niseko United", "Mammoth Mountain"). Never say "Resort #3" or use numeric IDs in your response.
 """
 
 
