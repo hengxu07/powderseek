@@ -97,6 +97,9 @@ CREATE TABLE user_profiles (
     visited_resort_ids      INT[] DEFAULT '{}',
     favorite_resort_ids     INT[] DEFAULT '{}',
 
+    -- session context: last ranked resort prompt, reused for follow-up messages
+    last_resort_context     TEXT,
+
     updated_at              TIMESTAMPTZ DEFAULT NOW()
 );
 

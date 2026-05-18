@@ -39,6 +39,27 @@ def get_pool() -> asyncpg.Pool:
 # User profiles
 # ---------------------------------------------------------------------------
 
+async def save_session_resort_context(session_id: str, context: str) -> None:
+    await get_pool().execute(
+        """
+        INSERT INTO user_profiles (session_id, last_resort_context)
+        VALUES ($1, $2)
+        ON CONFLICT (session_id) DO UPDATE SET
+            last_resort_context = EXCLUDED.last_resort_context,
+            updated_at = NOW()
+        """,
+        session_id, context,
+    )
+
+
+async def get_session_resort_context(session_id: str) -> Optional[str]:
+    row = await get_pool().fetchrow(
+        "SELECT last_resort_context FROM user_profiles WHERE session_id = $1",
+        session_id,
+    )
+    return row["last_resort_context"] if row else None
+
+
 async def get_user_profile(session_id: str) -> Optional[dict]:
     row = await get_pool().fetchrow(
         "SELECT * FROM user_profiles WHERE session_id = $1",

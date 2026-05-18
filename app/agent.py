@@ -224,12 +224,6 @@ Guidelines:
 """
 
 
-def build_system_prompt(ctx: Optional[TripContext], ranked_resorts) -> str:
-    if ctx and ranked_resorts:
-        trip_context = build_agent_prompt(ranked_resorts, ctx)
-        return f"{SYSTEM_BASE}\n\n{trip_context}"
-    return SYSTEM_BASE
-
 
 # ---------------------------------------------------------------------------
 # Agentic streaming loop
@@ -246,14 +240,18 @@ async def run_agent(
     """
     client = anthropic.AsyncAnthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
 
-    # Build ranked resort context if we have trip info
+    # Build ranked resort context if we have trip info; otherwise reload last session context
     ranked = []
     if trip_ctx:
         resorts = await db.get_resorts_with_forecasts()
         flight_table = await db.get_flight_table(trip_ctx.origin_airport)
         ranked = rank_resorts(resorts, trip_ctx, flight_table, top_n=6)
-
-    system_prompt = build_system_prompt(trip_ctx, ranked)
+        resort_context = build_agent_prompt(ranked, trip_ctx)
+        await db.save_session_resort_context(session_id, resort_context)
+        system_prompt = f"{SYSTEM_BASE}\n\n{resort_context}"
+    else:
+        resort_context = await db.get_session_resort_context(session_id)
+        system_prompt = f"{SYSTEM_BASE}\n\n{resort_context}" if resort_context else SYSTEM_BASE
 
     # Load conversation history and append current message
     history = await db.get_conversation_history(session_id)
