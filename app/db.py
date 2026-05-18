@@ -131,9 +131,9 @@ async def get_resorts_with_forecasts() -> list[ResortCandidate]:
             vibe_tags=list(row["vibe_tags"]),
             budget_tier=row["budget_tier"] or "mid",
             agent_notes=row["agent_notes"] or "",
-            new_snow_cm=row["new_snow_cm"],
-            cumulative_7d_cm=row["cumulative_7d_cm"],
-            base_depth_cm=row["base_depth_cm"],
+            new_snow_cm=float(row["new_snow_cm"]) if row["new_snow_cm"] is not None else None,
+            cumulative_7d_cm=float(row["cumulative_7d_cm"]) if row["cumulative_7d_cm"] is not None else None,
+            base_depth_cm=int(row["base_depth_cm"]) if row["base_depth_cm"] is not None else None,
         )
         for row in rows
     ]
