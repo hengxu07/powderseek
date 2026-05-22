@@ -201,6 +201,9 @@ async def execute_tool(name: str, inputs: dict, session_id: str) -> str:
             value = _normalize_skill_level(value)
         elif key == "budget_level":
             value = _normalize_budget_level(value)
+        elif key in ("preferred_terrain", "passport_countries"):
+            if isinstance(value, str):
+                value = [value]
 
         await db.upsert_user_profile(session_id, {key: value})
         return f"Saved: {key} = {value}"
