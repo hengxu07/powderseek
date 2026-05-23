@@ -2,15 +2,15 @@
 
 ## Stack
 
-| Layer | Technology | Reason |
+| Layer | Technology | Notes |
 |---|---|---|
-| Frontend | React + Vite | Same as Namicast — familiar, fast |
-| Backend | FastAPI (Python) | Async, easy Claude API integration |
-| Database | PostgreSQL | Structured resort/forecast data, user profiles |
-| AI | Claude API (claude-sonnet-4-6) | Conversational reasoning + trip recommendations |
-| Forecast | Open-Meteo API | Free, global, lat/lon snow forecasts |
-| Hosting (API) | Railway | Same as Namicast |
-| Hosting (Frontend) | Vercel | Same as Namicast |
+| Frontend | React + Vite + TypeScript | Hosted on Vercel |
+| Backend | FastAPI (Python 3.12) | Async, hosted on Railway |
+| Database | PostgreSQL (asyncpg) | Resorts, forecasts, user profiles |
+| AI | Claude API (claude-sonnet-4-6) | Agentic loop with tool use + SSE streaming |
+| Forecast | Open-Meteo API | Free, global, refreshed every 6 hours |
+| Hosting (API) | Railway | Backend + DB |
+| Hosting (Frontend) | Vercel | Frontend |
 
 ---
 
@@ -105,8 +105,6 @@ Open-Meteo is called by a **background worker**, not on-demand per chat:
 - Chat endpoint reads from cache — no latency hit during conversation
 - Worker runs as a Railway cron job (or APScheduler within the FastAPI process for MVP)
 
-This mirrors Namicast's pre-computation pattern for the default spots.
-
 ---
 
 ## Agent Tools
@@ -117,18 +115,6 @@ This mirrors Namicast's pre-computation pattern for the default spots.
 | `get_resort_details(slug)` | Returns full resort record (agent_notes, terrain, vibe tags) |
 | `save_preference(key, value)` | Persists a user preference to their profile mid-conversation |
 | `compare_resorts(slugs[])` | Returns side-by-side forecast + metadata for a list of resorts |
-
----
-
-## Key Differences from Namicast
-
-| | Namicast | Powderseek |
-|---|---|---|
-| Data source | Stormglass (ocean buoys) | Open-Meteo (atmospheric model) |
-| Recommendation scope | Fixed spots near user | Global, tier-based |
-| Trip planning | None (real-time conditions) | Core feature — dates, duration, travel |
-| Agent complexity | Tool-use + SSE streaming | Same + routing/scoring pre-pass before agent |
-| Database | Single surf spots table | Resorts + flight_routes + richer metadata |
 
 ---
 
