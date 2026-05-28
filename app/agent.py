@@ -28,6 +28,7 @@ logger = logging.getLogger(__name__)
 
 MODEL = "claude-sonnet-4-6"
 MAX_TOKENS = 2048
+MAX_TOOL_ROUNDS = 5  # cap the agentic loop so a misbehaving tool can't loop forever
 
 # ---------------------------------------------------------------------------
 # Tool definitions (passed to Claude)
@@ -268,20 +269,27 @@ async def run_agent(
     full_response = ""
     has_yielded_text = False  # tracks whether any text was streamed before this iteration
 
-    # Agentic loop: keep going until no more tool calls
+    # Agentic loop, capped at MAX_TOOL_ROUNDS so a misbehaving tool can't loop
+    # forever. On the final round we drop tools, forcing Claude to produce a
+    # closing text answer instead of another tool call.
+    rounds = 0
     while True:
         tool_calls: list[dict] = []
         assistant_content = []
         current_tool: Optional[dict] = None
         iteration_text_started = False
+        offer_tools = rounds < MAX_TOOL_ROUNDS
 
-        async with client.messages.stream(
+        stream_kwargs: dict = dict(
             model=MODEL,
             max_tokens=MAX_TOKENS,
             system=system_prompt,
             messages=messages,
-            tools=TOOLS,
-        ) as stream:
+        )
+        if offer_tools:
+            stream_kwargs["tools"] = TOOLS
+
+        async with client.messages.stream(**stream_kwargs) as stream:
             async for event in stream:
                 if event.type == "content_block_start":
                     block = event.content_block
@@ -314,8 +322,9 @@ async def run_agent(
             assistant_content = final.content
             stop_reason = final.stop_reason
 
-        if stop_reason != "tool_use" or not tool_calls:
+        if not offer_tools or stop_reason != "tool_use" or not tool_calls:
             break
+        rounds += 1
 
         # Execute tools and build tool_result message
         messages.append({"role": "assistant", "content": assistant_content})
