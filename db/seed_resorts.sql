@@ -95,3 +95,26 @@ INSERT INTO resorts (name, slug, country, region, continent, lat, lon, elevation
 ('Portillo', 'portillo', 'CL', 'Valparaíso', 'south_america', -32.8369, -70.1308, 2590, 3310, 'SCL', 165, 6, 9, 914, '{"beginner":15,"intermediate":45,"advanced":25,"expert":15}', '{powder,steep,remote}', '{remote,adventure,authentic,historic,intimate}', 'premium', '{}', 'The oldest ski resort in South America — a single iconic yellow hotel at 2,800m. Small (no lift lines ever), legendary steep terrain, extraordinary dry Andean powder. Where World Cup teams train in the northern summer. 3hr from Santiago airport. A true bucket list trip.'),
 
 ('Valle Nevado', 'valle-nevado', 'CL', 'Santiago Metropolitan', 'south_america', -33.3573, -70.2753, 3025, 3670, 'SCL', 120, 6, 9, 762, '{"beginner":20,"intermediate":45,"advanced":25,"expert":10}', '{powder,variety,heli-skiing}', '{adventure,heli-skiing,accessible}', 'mid', '{}', 'Closest major resort to Santiago (2hr). 3 interconnected resorts (Valle Nevado, La Parva, El Colorado). Heli-skiing is a specialty. Dry Andean powder when conditions align. More accessible than Portillo for a Santiago-base trip.');
+
+
+-- ============================================================
+-- status_url backfill
+-- Starter set for resorts whose homepages reliably surface
+-- operating-season dates. Others remain NULL until backfilled;
+-- the season_status worker skips NULL urls.
+-- ============================================================
+UPDATE resorts SET status_url = 'https://www.mammothmountain.com'  WHERE slug = 'mammoth';
+UPDATE resorts SET status_url = 'https://www.junemountain.com'     WHERE slug = 'june-mountain';
+UPDATE resorts SET status_url = 'https://www.parkcitymountain.com' WHERE slug = 'park-city';
+UPDATE resorts SET status_url = 'https://www.deervalley.com'       WHERE slug = 'deer-valley';
+UPDATE resorts SET status_url = 'https://www.alta.com'             WHERE slug = 'alta';
+UPDATE resorts SET status_url = 'https://www.snowbird.com'         WHERE slug = 'snowbird';
+UPDATE resorts SET status_url = 'https://www.breckenridge.com'     WHERE slug = 'breckenridge';
+UPDATE resorts SET status_url = 'https://www.aspensnowmass.com'    WHERE slug = 'aspen';
+UPDATE resorts SET status_url = 'https://www.tellurideskiresort.com' WHERE slug = 'telluride';
+UPDATE resorts SET status_url = 'https://www.skiheavenly.com'      WHERE slug = 'heavenly';
+UPDATE resorts SET status_url = 'https://www.palisadestahoe.com'   WHERE slug = 'palisades';
+UPDATE resorts SET status_url = 'https://www.bigbearmountainresort.com' WHERE slug = 'big-bear';
+UPDATE resorts SET status_url = 'https://www.whistlerblackcomb.com' WHERE slug = 'whistler';
+UPDATE resorts SET status_url = 'https://www.skibig3.com'          WHERE slug = 'banff-sunshine';
+UPDATE resorts SET status_url = 'https://www.skilouise.com'        WHERE slug = 'lake-louise';

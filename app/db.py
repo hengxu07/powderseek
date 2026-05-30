@@ -22,6 +22,20 @@ async def init_pool() -> None:
         min_size=2,
         max_size=10,
     )
+    # Idempotent migration for columns added after the initial schema.
+    # ADD IF NOT EXISTS is a no-op on fresh DBs created from schema.sql.
+    async with _pool.acquire() as conn:
+        await conn.execute(
+            """
+            ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS trip_start_date     DATE;
+            ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS trip_end_date       DATE;
+            ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS trip_origin_airport CHAR(3);
+            ALTER TABLE resorts       ADD COLUMN IF NOT EXISTS status_url               TEXT;
+            ALTER TABLE resorts       ADD COLUMN IF NOT EXISTS season_open_date         DATE;
+            ALTER TABLE resorts       ADD COLUMN IF NOT EXISTS season_close_date        DATE;
+            ALTER TABLE resorts       ADD COLUMN IF NOT EXISTS season_status_updated_at TIMESTAMPTZ;
+            """
+        )
 
 
 async def close_pool() -> None:
@@ -39,25 +53,42 @@ def get_pool() -> asyncpg.Pool:
 # User profiles
 # ---------------------------------------------------------------------------
 
-async def save_session_resort_context(session_id: str, context: str) -> None:
+async def save_session_trip(
+    session_id: str,
+    start_date,
+    end_date,
+    origin_airport: str,
+) -> None:
     await get_pool().execute(
         """
-        INSERT INTO user_profiles (session_id, last_resort_context)
-        VALUES ($1, $2)
+        INSERT INTO user_profiles
+            (session_id, trip_start_date, trip_end_date, trip_origin_airport)
+        VALUES ($1, $2, $3, $4)
         ON CONFLICT (session_id) DO UPDATE SET
-            last_resort_context = EXCLUDED.last_resort_context,
+            trip_start_date     = EXCLUDED.trip_start_date,
+            trip_end_date       = EXCLUDED.trip_end_date,
+            trip_origin_airport = EXCLUDED.trip_origin_airport,
             updated_at = NOW()
         """,
-        session_id, context,
+        session_id, start_date, end_date, origin_airport,
     )
 
 
-async def get_session_resort_context(session_id: str) -> Optional[str]:
+async def get_session_trip(session_id: str) -> Optional[dict]:
     row = await get_pool().fetchrow(
-        "SELECT last_resort_context FROM user_profiles WHERE session_id = $1",
+        """
+        SELECT trip_start_date, trip_end_date, trip_origin_airport
+        FROM user_profiles WHERE session_id = $1
+        """,
         session_id,
     )
-    return row["last_resort_context"] if row else None
+    if not row or row["trip_start_date"] is None or row["trip_end_date"] is None:
+        return None
+    return {
+        "start_date": row["trip_start_date"],
+        "end_date": row["trip_end_date"],
+        "origin_airport": row["trip_origin_airport"],
+    }
 
 
 async def get_user_profile(session_id: str) -> Optional[dict]:
@@ -120,6 +151,7 @@ async def get_resorts_with_forecasts() -> list[ResortCandidate]:
             r.id, r.name, r.slug, r.continent, r.country, r.hemisphere,
             r.nearest_airport, r.airport_drive_minutes,
             r.season_start_month, r.season_end_month,
+            r.season_open_date, r.season_close_date, r.season_status_updated_at,
             r.avg_annual_snowfall_cm, r.difficulty_mix,
             r.terrain_tags, r.vibe_tags, r.budget_tier, r.agent_notes,
             r.snowboard_allowed,
@@ -157,9 +189,42 @@ async def get_resorts_with_forecasts() -> list[ResortCandidate]:
             new_snow_cm=float(row["new_snow_cm"]) if row["new_snow_cm"] is not None else None,
             cumulative_7d_cm=float(row["cumulative_7d_cm"]) if row["cumulative_7d_cm"] is not None else None,
             base_depth_cm=int(row["base_depth_cm"]) if row["base_depth_cm"] is not None else None,
+            season_open_date=row["season_open_date"],
+            season_close_date=row["season_close_date"],
+            season_status_updated_at=row["season_status_updated_at"],
         )
         for row in rows
     ]
+
+
+async def get_resorts_for_status_refresh() -> list[dict]:
+    """Returns id/slug/name/status_url for every resort with a non-null status_url."""
+    rows = await get_pool().fetch(
+        """
+        SELECT id, slug, name, status_url
+        FROM resorts
+        WHERE status_url IS NOT NULL
+        ORDER BY id
+        """
+    )
+    return [dict(r) for r in rows]
+
+
+async def upsert_season_status(
+    resort_id: int,
+    season_open_date,
+    season_close_date,
+) -> None:
+    await get_pool().execute(
+        """
+        UPDATE resorts
+        SET season_open_date         = $2,
+            season_close_date        = $3,
+            season_status_updated_at = NOW()
+        WHERE id = $1
+        """,
+        resort_id, season_open_date, season_close_date,
+    )
 
 
 async def get_resort_detail(slug: str) -> Optional[dict]:

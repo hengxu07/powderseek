@@ -1,9 +1,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 from enum import Enum
 from typing import Optional
+
+# How long a dated season_open_date/season_close_date pair is considered fresh
+# enough to override the month-based fallback. The scrape worker refreshes
+# monthly; 45 days lets a single missed run still count.
+SEASON_FRESHNESS_DAYS = 45
 
 
 # ---------------------------------------------------------------------------
@@ -144,21 +149,6 @@ class TripContext:
         round_trip_days = (one_way_travel_minutes * 2) / (60 * 24)
         return round_trip_days / self.duration_days
 
-    def is_in_season(self, season_start_month: int, season_end_month: int, hemisphere: str) -> bool:
-        """Check if the trip start date falls within the resort's season."""
-        m = self.start_date.month
-        if hemisphere == "southern":
-            # Southern Hemisphere: season is roughly June–September
-            return season_start_month <= m <= season_end_month
-        else:
-            # Northern Hemisphere: season may wrap Dec→Apr (start > end not expected here,
-            # seed data uses calendar months so Dec=12, Apr=4 — just do range check)
-            if season_start_month <= season_end_month:
-                return season_start_month <= m <= season_end_month
-            else:
-                # wraps year boundary (e.g. Nov=11 → Apr=4)
-                return m >= season_start_month or m <= season_end_month
-
 
 # ---------------------------------------------------------------------------
 # Resort candidate (flat struct from DB query result)
@@ -189,6 +179,13 @@ class ResortCandidate:
     cumulative_7d_cm: Optional[float] = None
     base_depth_cm: Optional[int] = None
 
+    # dated season window from the scrape worker. When present and fresh
+    # (status_updated_at within SEASON_FRESHNESS_DAYS), used in preference to
+    # the season_start_month/season_end_month fallback.
+    season_open_date: Optional[date] = None
+    season_close_date: Optional[date] = None
+    season_status_updated_at: Optional[datetime] = None
+
     # populated by routing layer
     flight_minutes: Optional[int] = None       # None = drive-only resort
     one_way_travel_minutes: Optional[int] = None
@@ -212,8 +209,8 @@ def filter_reachable(
     reachable = []
 
     for r in resorts:
-        # Hemisphere / season check
-        if not ctx.is_in_season(r.season_start_month, r.season_end_month, r.hemisphere):
+        # Season check: prefers fresh scraped dates, falls back to month range.
+        if not is_in_season(r, ctx.start_date):
             continue
 
         # Continent / country filter
@@ -259,23 +256,32 @@ def filter_reachable(
 
 def is_in_season(r: ResortCandidate, check_date: Optional[date] = None) -> bool:
     """
-    Returns True if the resort is currently within its operating season.
+    Returns True if the resort is open on `check_date` (default: today).
 
-    Northern hemisphere example: Nov (11) → Apr (4) wraps across year boundary,
-    so start > end means the season spans Dec 31.
-    Southern hemisphere (NZ, Chile): Jun (6) → Sep (9), start < end, same logic.
+    Prefers scraped dates (`season_open_date`/`season_close_date`) when present
+    and refreshed within SEASON_FRESHNESS_DAYS. Falls back to the month-range
+    fields (`season_start_month`/`season_end_month`) when dates are missing or
+    stale — handling the Northern wrap case (Nov→Apr, start > end).
     """
     d = check_date or date.today()
+
+    if (
+        r.season_open_date is not None
+        and r.season_close_date is not None
+        and r.season_status_updated_at is not None
+    ):
+        updated = r.season_status_updated_at
+        if updated.tzinfo is None:
+            updated = updated.replace(tzinfo=timezone.utc)
+        if datetime.now(timezone.utc) - updated <= timedelta(days=SEASON_FRESHNESS_DAYS):
+            return r.season_open_date <= d <= r.season_close_date
+
     m = d.month
     s = r.season_start_month
     e = r.season_end_month
-
     if s <= e:
-        # Season within one calendar year (e.g. Jun–Sep for southern hemisphere)
         return s <= m <= e
-    else:
-        # Season wraps across year boundary (e.g. Nov–Apr for northern hemisphere)
-        return m >= s or m <= e
+    return m >= s or m <= e
 
 
 # ---------------------------------------------------------------------------
@@ -378,6 +384,15 @@ def build_agent_prompt(
         "",
         "Candidate resorts (ranked by score, higher = stronger match):",
     ]
+
+    if not ranked:
+        lines.append(
+            "(none — no reachable resort is in season for these dates. "
+            "Tell the user plainly that nothing in range is open right now, "
+            "explain the season mismatch, and suggest different dates or — for "
+            "a longer trip — Southern Hemisphere options. Do NOT name a "
+            "specific resort.)"
+        )
 
     for i, (r, score) in enumerate(ranked, 1):
         travel_desc = (

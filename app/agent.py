@@ -229,7 +229,7 @@ Guidelines:
 - Keep responses conversational. No bullet-point walls.
 - ALWAYS refer to resorts by their full name (e.g. "Niseko United", "Mammoth Mountain"). Never say "Resort #3" or use numeric IDs in your response.
 - If a resort's context shows "Snowboard: NOT ALLOWED", always flag this clearly before recommending it — especially if the user is a snowboarder.
-- If a resort's context shows "CLOSED — out of season", do NOT recommend it as a primary pick. Acknowledge the closure briefly and steer toward in-season alternatives. Only mention it if the user explicitly asks about that resort.
+- ONLY recommend resorts that appear in the candidate list below. Never invent or recall a resort from outside that list — every reachable in-season option is already shown. If the candidate list is empty or explicitly says "no resorts match", tell the user nothing in range is open and suggest different dates; do not name a resort.
 """
 
 
@@ -241,7 +241,7 @@ Guidelines:
 async def run_agent(
     session_id: str,
     user_message: str,
-    trip_ctx: Optional[TripContext],
+    trip_ctx: TripContext,
 ) -> AsyncGenerator[str, None]:
     """
     Async generator that yields text chunks (SSE-ready).
@@ -249,18 +249,14 @@ async def run_agent(
     """
     client = anthropic.AsyncAnthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
 
-    # Build ranked resort context if we have trip info; otherwise reload last session context
-    ranked = []
-    if trip_ctx:
-        resorts = await db.get_resorts_with_forecasts()
-        flight_table = await db.get_flight_table(trip_ctx.origin_airport)
-        ranked = rank_resorts(resorts, trip_ctx, flight_table, top_n=6)
-        resort_context = build_agent_prompt(ranked, trip_ctx)
-        await db.save_session_resort_context(session_id, resort_context)
-        system_prompt = f"{SYSTEM_BASE}\n\n{resort_context}"
-    else:
-        resort_context = await db.get_session_resort_context(session_id)
-        system_prompt = f"{SYSTEM_BASE}\n\n{resort_context}" if resort_context else SYSTEM_BASE
+    # Re-rank every turn against the trip's actual dates. Earlier this cached the
+    # rendered prompt and reused it on follow-up messages, which froze season
+    # labels in time and surfaced closed resorts (e.g. Park City in May).
+    resorts = await db.get_resorts_with_forecasts()
+    flight_table = await db.get_flight_table(trip_ctx.origin_airport)
+    ranked = rank_resorts(resorts, trip_ctx, flight_table, top_n=6)
+    resort_context = build_agent_prompt(ranked, trip_ctx)
+    system_prompt = f"{SYSTEM_BASE}\n\n{resort_context}"
 
     # Load conversation history and append current message
     history = await db.get_conversation_history(session_id)

@@ -26,13 +26,11 @@ class TripInput(BaseModel):
 
 
 class ChatRequest(BaseModel):
-    session_id: str
     message: str
     trip: Optional[TripInput] = None   # provided on first message, stored in profile after
 
 
 class ProfileUpdate(BaseModel):
-    session_id: str
     home_airport: Optional[str] = None
     skill_level: Optional[str] = None   # beginner | intermediate | advanced | expert
     preferred_terrain: Optional[list[str]] = None

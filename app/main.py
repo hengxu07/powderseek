@@ -10,18 +10,39 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 
 import db
 import forecast
+import season_status
+import session as session_mod
 from agent import run_agent
 from models import ChatRequest, ForecastResponse, ProfileUpdate, ResortDetailResponse, ResortResponse
 from routing import TripContext
 
+
+def require_session(authorization: str | None = Header(default=None)) -> str:
+    """
+    FastAPI dependency: verifies Authorization: Bearer <token> and returns the
+    session_id encoded in the token. 401s on missing/bad/tampered tokens.
+    """
+    if not authorization or not authorization.lower().startswith("bearer "):
+        raise HTTPException(status_code=401, detail="Missing bearer token")
+    token = authorization.split(" ", 1)[1].strip()
+    session_id = session_mod.verify(token)
+    if not session_id:
+        raise HTTPException(status_code=401, detail="Invalid session token")
+    return session_id
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Default trip used when the user sends a message with no dates and no
+# previously-set trip on file. start_date=today guarantees the season filter
+# drops resorts that are closed right now; 5 days lands in TripTier.SHORT.
+DEFAULT_TRIP_DAYS = 5
 
 
 # ---------------------------------------------------------------------------
@@ -39,6 +60,12 @@ async def lifespan(app: FastAPI):
     # so the server starts accepting requests immediately
     scheduler.add_job(forecast.refresh_all_forecasts, "interval", hours=6)
     scheduler.add_job(forecast.refresh_all_forecasts, "date")  # run once at startup
+
+    # Refresh dated season status (open/close) monthly on the 1st at 04:00,
+    # plus a startup run so a freshly-deployed instance has fresh dates.
+    scheduler.add_job(season_status.refresh_all_season_status, "cron", day=1, hour=4)
+    scheduler.add_job(season_status.refresh_all_season_status, "date")
+
     scheduler.start()
 
     yield
@@ -65,42 +92,75 @@ app.add_middleware(
 # Routes
 # ---------------------------------------------------------------------------
 
+@app.post("/session")
+async def create_session():
+    """Issue a fresh session_id + signed bearer token. Client stores the token
+    and sends it as Authorization: Bearer <token> on all subsequent requests."""
+    session_id, token = session_mod.new_session()
+    return {"session_id": session_id, "token": token}
+
+
 @app.post("/chat")
-async def chat(req: ChatRequest):
+async def chat(req: ChatRequest, session_id: str = Depends(require_session)):
     """
     Main conversational endpoint. Streams the agent's response as SSE.
 
     If `req.trip` is provided, it overrides whatever trip context is stored
     in the user's profile for this request.
     """
-    profile = await db.get_user_profile(req.session_id)
+    profile = await db.get_user_profile(session_id)
+    today = date.today()
 
-    # Build TripContext if trip dates were provided
-    trip_ctx = None
+    home_lat = float(profile["home_lat"]) if profile and profile.get("home_lat") else 33.6846
+    home_lon = float(profile["home_lon"]) if profile and profile.get("home_lon") else -117.8265
+    home_airport = (profile or {}).get("home_airport", "SNA")
+
     if req.trip:
-        home_lat = float(profile["home_lat"]) if profile and profile.get("home_lat") else 33.6846
-        home_lon = float(profile["home_lon"]) if profile and profile.get("home_lon") else -117.8265
-
-        trip_ctx = TripContext(
-            duration_days=req.trip.duration_days,
-            start_date=req.trip.start_date,
-            origin_airport=req.trip.origin_airport or (profile or {}).get("home_airport", "SNA"),
-            home_lat=home_lat,
-            home_lon=home_lon,
-            skill_level=req.trip.skill_level or (profile or {}).get("skill_level", "intermediate"),
-            preferred_terrain=list((profile or {}).get("preferred_terrain") or []),
-            budget_level=req.trip.budget_level or (profile or {}).get("budget_level", "mid"),
-            passport_countries=list((profile or {}).get("passport_countries") or ["US"]),
-            visited_resort_slugs=[],
+        start_date = req.trip.start_date
+        duration_days = req.trip.duration_days
+        origin_airport = req.trip.origin_airport or home_airport
+        skill_level = req.trip.skill_level or (profile or {}).get("skill_level", "intermediate")
+        budget_level = req.trip.budget_level or (profile or {}).get("budget_level", "mid")
+        # Remember this trip so follow-up messages (which carry no dates) re-rank
+        # against the same trip instead of falling back to "today".
+        await db.save_session_trip(
+            session_id, req.trip.start_date, req.trip.end_date, origin_airport,
         )
+    else:
+        saved = await db.get_session_trip(session_id)
+        # Ignore a saved trip whose start date has already passed — otherwise a
+        # stale winter trip would resurface closed resorts in the off-season.
+        if saved and saved["start_date"] >= today:
+            start_date = saved["start_date"]
+            duration_days = (saved["end_date"] - saved["start_date"]).days + 1
+            origin_airport = saved["origin_airport"] or home_airport
+        else:
+            start_date = today
+            duration_days = DEFAULT_TRIP_DAYS
+            origin_airport = home_airport
+        skill_level = (profile or {}).get("skill_level", "intermediate")
+        budget_level = (profile or {}).get("budget_level", "mid")
+
+    trip_ctx = TripContext(
+        duration_days=duration_days,
+        start_date=start_date,
+        origin_airport=origin_airport,
+        home_lat=home_lat,
+        home_lon=home_lon,
+        skill_level=skill_level,
+        preferred_terrain=list((profile or {}).get("preferred_terrain") or []),
+        budget_level=budget_level,
+        passport_countries=list((profile or {}).get("passport_countries") or ["US"]),
+        visited_resort_slugs=[],
+    )
 
     async def event_stream():
         try:
-            async for chunk in run_agent(req.session_id, req.message, trip_ctx):
+            async for chunk in run_agent(session_id, req.message, trip_ctx):
                 payload = json.dumps({"type": "text", "content": chunk})
                 yield f"data: {payload}\n\n"
         except Exception as e:
-            logger.exception("Agent error for session %s", req.session_id)
+            logger.exception("Agent error for session %s", session_id)
             error_payload = json.dumps({"type": "error", "content": str(e)})
             yield f"data: {error_payload}\n\n"
         finally:
@@ -172,10 +232,13 @@ async def get_forecast(resort_id: int):
 
 
 @app.post("/profile")
-async def update_profile(req: ProfileUpdate):
+async def update_profile(
+    req: ProfileUpdate,
+    session_id: str = Depends(require_session),
+):
     """Upsert user preferences."""
-    updates = req.model_dump(exclude={"session_id"}, exclude_none=True)
-    await db.upsert_user_profile(req.session_id, updates)
+    updates = req.model_dump(exclude_none=True)
+    await db.upsert_user_profile(session_id, updates)
     return {"ok": True}
 
 

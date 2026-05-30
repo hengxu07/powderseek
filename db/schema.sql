@@ -25,10 +25,19 @@ CREATE TABLE resorts (
     nearest_airport         CHAR(3) NOT NULL,           -- IATA code of closest airport with commercial service
     airport_drive_minutes   INT NOT NULL,               -- typical drive from that airport to resort base
 
-    -- season (month numbers, 1=Jan 12=Dec)
-    -- for southern hemisphere, season_start > season_end is expected (e.g. June–September)
+    -- season (month numbers, 1=Jan 12=Dec) — fallback when dated values are
+    -- absent or stale. For southern hemisphere, season_start > season_end is
+    -- expected (e.g. June–September).
     season_start_month      INT NOT NULL CHECK (season_start_month BETWEEN 1 AND 12),
     season_end_month        INT NOT NULL CHECK (season_end_month BETWEEN 1 AND 12),
+
+    -- live season window, refreshed monthly by the season_status worker by
+    -- scraping the resort's status page. Used in preference to the month
+    -- fallback when present and not stale (see SEASON_FRESHNESS_DAYS).
+    status_url               TEXT,
+    season_open_date         DATE,
+    season_close_date        DATE,
+    season_status_updated_at TIMESTAMPTZ,
 
     -- snow profile
     avg_annual_snowfall_cm  INT,                        -- historical average, used for reliability scoring
@@ -100,6 +109,12 @@ CREATE TABLE user_profiles (
 
     -- session context: last ranked resort prompt, reused for follow-up messages
     last_resort_context     TEXT,
+
+    -- current trip for this session. Persisted so follow-up messages that arrive
+    -- without explicit dates re-rank against the same trip instead of guessing.
+    trip_start_date         DATE,
+    trip_end_date           DATE,
+    trip_origin_airport     CHAR(3),
 
     updated_at              TIMESTAMPTZ DEFAULT NOW()
 );

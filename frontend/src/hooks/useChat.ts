@@ -2,20 +2,24 @@ import { useCallback, useRef, useState } from 'react';
 import { ChatMessage, TripInput } from '../types';
 import { apiUrl } from '../lib/api';
 
-function getSessionId(): string {
-  const key = 'powderseek_session';
-  let id = localStorage.getItem(key);
-  if (!id) {
-    id = crypto.randomUUID();
-    localStorage.setItem(key, id);
-  }
-  return id;
+const TOKEN_KEY = 'powderseek_token';
+
+// Server-issued, HMAC-signed token. Until the backend verifies the signature,
+// the request 401s — so unlike the old random-UUID session_id, this can't be
+// forged or replayed across sessions.
+async function getToken(): Promise<string> {
+  const cached = localStorage.getItem(TOKEN_KEY);
+  if (cached) return cached;
+  const res = await fetch(apiUrl('/session'), { method: 'POST' });
+  if (!res.ok) throw new Error('Failed to create session');
+  const data = await res.json();
+  localStorage.setItem(TOKEN_KEY, data.token);
+  return data.token;
 }
 
 export function useChat() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [streaming, setStreaming] = useState(false);
-  const sessionId = useRef(getSessionId());
   const abortRef = useRef<AbortController | null>(null);
 
   const sendMessage = useCallback(async (text: string, trip?: TripInput) => {
@@ -30,12 +34,15 @@ export function useChat() {
     abortRef.current = new AbortController();
 
     try {
+      const token = await getToken();
       const res = await fetch(apiUrl('/chat'), {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
         signal: abortRef.current.signal,
         body: JSON.stringify({
-          session_id: sessionId.current,
           message: text,
           trip: trip ?? null,
         }),
@@ -117,8 +124,8 @@ export function useChat() {
     abortRef.current?.abort();
     setMessages([]);
     setStreaming(false);
-    sessionId.current = crypto.randomUUID();
-    localStorage.setItem('powderseek_session', sessionId.current);
+    // Drop the cached token; getToken() will mint a fresh session on next send.
+    localStorage.removeItem(TOKEN_KEY);
   }, []);
 
   return { messages, streaming, sendMessage, reset };
